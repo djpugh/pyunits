@@ -7,7 +7,7 @@ class UnitConverter(object):
     PREFIXES={'G':1000000000.0,'M':1000000.0,'K':1000.0,'k':1000.0,'d':0.1,'c':0.01,'m':0.001,'n':0.000000001}
     UNITS={'m':{'SIVAL':1.0,'TYPE':'Length'},'ft':{'SIVAL':0.3048,'TYPE':'Length'},'s':{'SIVAL':1.0,'TYPE':'Time'},'min':{'SIVAL':60.0,'TYPE':'Time'},'kg':{'SIVAL':1.0,'TYPE':'Mass'},
            'g':{'SIVAL':0.001,'TYPE':'Mass'},'lb':{'SIVAL':2.2046226,'TYPE':'Mass'},'C':{'SIVAL':1.0,'TYPE':'Charge'},'hr':{'SIVAL':3600.0, 'TYPE':'Time'},'miles':{'SIVAL':1609.344,'TYPE':'Length'}}
-    COMPOUND_UNITS={'A':{'SIVAL':1.0,'UNITS':'C/s'},'J':{'SIVAL':1.0,'UNITS':'kg*m**2/s**2'},'N':{'SIVAL':1.0,'UNITS':'kg*m/s**2'}}
+    COMPOUND_UNITS={'Ohm':{'SIVAL':1.0,'UNITS':'kg*m**2/s*C**2'},'A':{'SIVAL':1.0,'UNITS':'C/s'},'J':{'SIVAL':1.0,'UNITS':'kg*m**2/s**2'},'N':{'SIVAL':1.0,'UNITS':'kg*m/s**2'},'V':{'SIVAL':1.0,'UNITS':'kg*m**2/C*s**2'}}
     SEPARATORS={'MULTIPLY':'\*\*|\^|\*','DIVIDE':'\/'}
     def __init__(self,value=1,actualUnits=''):
         self.setunits(actualUnits)
@@ -160,6 +160,17 @@ class UnitConverter(object):
         else:
             raise UnitError('Order of units: '+self.actualUnits+'  and  '+desiredUnit+' does not match')
     def convert(self,desiredUnit):
+        """convert(self,desiredUnit)
+        Function to compare two units and return the current value multiplied by the scale factor between them.
+        If the dimensional order of the units is incorrect raises an error.
+        Expects forms:
+        kg*m**2
+        kg*m^2
+        kg/m^3
+        kg/m*m*m
+        Splits for division first and then multiplication and power - no bracket parsing and assumes unit in the form:
+        kg/m/s is kg per (m per s) ie kgs/m).
+        """
         return self.unitCompare(desiredUnit)*self.value,desiredUnit
 class __UnitConverterTestCase(unittest.TestCase):
     def setUp(self):
@@ -187,6 +198,9 @@ class __UnitConverterTestCase(unittest.TestCase):
         self.assertFalse(self.unitConverter.isCompound('m'),'isCompound error: '+str(self.unitConverter.isCompound('m')))
         self.assertTrue(self.unitConverter.isCompound('N'),'isCompound error: '+str(self.unitConverter.isCompound('N')))
         self.assertTrue(self.unitConverter.isCompound('A'),'isCompound error: '+str(self.unitConverter.isCompound('A')))
+        self.assertTrue(self.unitConverter.isCompound('A'),'isCompound error: '+str(self.unitConverter.isCompound('A')))
+        self.assertTrue(self.unitConverter.isCompound('V'),'isCompound error: '+str(self.unitConverter.isCompound('V')))
+        self.assertTrue(self.unitConverter.isCompound('Ohm'),'isCompound error: '+str(self.unitConverter.isCompound('Ohm')))
         self.assertFalse(self.unitConverter.isCompound('C'),'isCompound error: '+str(self.unitConverter.isCompound('C')))
         self.assertFalse(self.unitConverter.isCompound('g'),'isCompound error: '+str(self.unitConverter.isCompound('g')))
         self.assertFalse(self.unitConverter.isCompound('ft'),'isCompound error: '+str(self.unitConverter.isCompound('ft')))
@@ -198,6 +212,8 @@ class __UnitConverterTestCase(unittest.TestCase):
     def test_getCompoundUnit(self):
         self.assertEqual(self.unitConverter.getCompoundUnit({},1,'J'),({'Mass':1,'Length':2,'Time':-2},1),'getCompoundUnit error: '+str(self.unitConverter.getCompoundUnit({},1,'J')))
         self.assertEqual(self.unitConverter.getCompoundUnit({},1,'A'),({'Charge':1,'Time':-1},1),'getCompoundUnit error: '+str(self.unitConverter.getCompoundUnit({},1,'A')))
+        self.assertEqual(self.unitConverter.getCompoundUnit({},1,'V'),({'Length': 2, 'Mass': 1, 'Charge': -1, 'Time': -2},1),'getCompoundUnit error: '+str(self.unitConverter.getCompoundUnit({},1,'V')))
+        self.assertEqual(self.unitConverter.getCompoundUnit({},1,'Ohm'),({'Length': 2, 'Mass': 1, 'Charge': -2, 'Time': -1},1),'getCompoundUnit error: '+str(self.unitConverter.getCompoundUnit({},1,'Ohm')))
         self.assertEqual(self.unitConverter.getCompoundUnit({},1,'N'),({'Mass':1,'Length':1,'Time':-2},1),'getCompoundUnit error: '+str(self.unitConverter.getCompoundUnit({},1,'N')))
         self.assertEqual(self.unitConverter.getCompoundUnit({},1,'kN'),({'Mass':1,'Length':1,'Time':-2},1000.0),'getCompoundUnit error: '+str(self.unitConverter.getCompoundUnit({},1,'kN')))
     def test_unitParse(self):
