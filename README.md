@@ -1,4 +1,4 @@
-pyunitsconvert
+pyunits
 ==============
 
-pyunitsconvert is a simple module for parsing and converting scientific units
+pyunits is a simple module for using and converting scientific units
