@@ -1,7 +1,7 @@
 import unittest
 from re import compile
 class UnitError(Exception):
-    __doc__="""Exception raised for unit conversion errors."""
+    __doc__="""Exception raised for unit errors."""
 class Unit(float):
     _prefixes={'G':1000000000.0,'M':1000000.0,'K':1000.0,'k':1000.0,'d':0.1,'c':0.01,'m':0.001,'n':0.000000001}
     _units={'m':{'SIVAL':1.0,'TYPE':'Length'},'ft':{'SIVAL':0.3048,'TYPE':'Length'},'s':{'SIVAL':1.0,'TYPE':'Time'},'min':{'SIVAL':60.0,'TYPE':'Time'},'kg':{'SIVAL':1.0,'TYPE':'Mass'},
