@@ -8,13 +8,16 @@ class Unit(float):
            'g':{'SIVAL':0.001,'TYPE':'Mass'},'lb':{'SIVAL':2.2046226,'TYPE':'Mass'},'C':{'SIVAL':1.0,'TYPE':'Charge'},'hr':{'SIVAL':3600.0, 'TYPE':'Time'},'miles':{'SIVAL':1609.344,'TYPE':'Length'}}
     _compoundUnits={'Ohm':{'SIVAL':1.0,'UNITS':'kg*m**2/s*C**2'},'A':{'SIVAL':1.0,'UNITS':'C/s'},'J':{'SIVAL':1.0,'UNITS':'kg*m**2/s**2'},'N':{'SIVAL':1.0,'UNITS':'kg*m/s**2'},'V':{'SIVAL':1.0,'UNITS':'kg*m**2/C*s**2'}}
     _separators={'MULTIPLY':'\*\*|\^|\*','DIVIDE':'\/'}
-    def __init__(self,value,units=False):
-        super(Unit,self).__init__(value)
+    def __new__(cls,value,units=False):
+        self=float.__new__(cls,value)
         if units:
             self.setUnits(units)
         else:
             self.__setattr__('units',False)
             self.__setattr__('order',False)
+        return self
+    def __float__(self):
+        return super(Unit,self).__float__()
     def setUnits(self,units):
         multiply=compile(self._separators['MULTIPLY'])
         divide=compile(self._separators['DIVIDE'])
@@ -23,6 +26,18 @@ class Unit(float):
         order,scaling=self.combine(self.unitParse(actUnit['Numerator']),self.unitParse(actUnit['Denominator']))
         self.__setattr__('units',units)
         self.__setattr__('order',order)
+    def invert(self):
+        invertedUnits=False
+        if self.units:
+            multiply=compile(self._separators['MULTIPLY'])
+            divide=compile(self._separators['DIVIDE'])
+            actUnit=dict(zip(['Numerator','Denominator'],[multiply.split('*'.join(divide.split(self.units)[::2])),multiply.split('*'.join(divide.split(self.units)[1::2]))]))
+            import ipdb
+            if len(divide.split(self.units)[1::2]):
+                invertedUnits='/'.join(['*'.join(divide.split(self.units)[1::2]),'*'.join(divide.split(self.units)[::2])])
+            else:
+                invertedUnits='**-1*'.join(multiply.split('*'.join(divide.split(self.units)[::2])))+'**-1'
+        return self.__new__(self.__class__,1.0/float(self),invertedUnits)
     def __eq__(self,other):
         if type(other)==type(self):
             #check order and then convert to unit
@@ -36,52 +51,85 @@ class Unit(float):
     def __add__(self,other):
         if type(other)==type(self):
             #check order and then convert to unit
-            if not other.order or other.order==self.order:
-                return super(Unit,self).__add__(other.convert(self.units))
+            if not self.order:
+                return self.__new__(self.__class__,float(self)+float(other),other.units)
+            if not other.order  or other.order==self.order:
+                return self.__new__(self.__class__,super(Unit,self).__add__(other.convert(self.units)),self.units)
             raise UnitError('Dimensionality of units does not match')
         else:
-            return super(Unit,self).__add__(other)
+            return self.__new__(self.__class__,super(Unit,self).__add__(other),self.units)
+    def __repr__(self):
+        if self.units:
+            return super(Unit,self).__repr__()+' '+self.units
+        return super(Unit,self).__repr__()
     def __sub__(self,other):
         if type(other)==type(self):
             #check order and then convert to unit
+            if not self.order:
+                return self.__new__(self.__class__,float(self)-float(other),other.units)
             if not other.order or other.order==self.order:
-                return super(Unit,self).__sub__(other.convert(self.units))
+                return self.__new__(self.__class__,super(Unit,self).__sub__(other.convert(self.units)),self.units)
             raise UnitError('Dimensionality of units does not match')
         else:
-            return super(Unit,self).__sub__(other)
+            return Unit(super(Unit,self).__sub__(other),self.units)
     def __mul__(self,other):
         if type(other)==type(self):
             #check order and then convert to unit
-            if not other.order or other.order==self.order:
-                return super(Unit,self).__mul__(other.convert(self.units))
-            elif not other.order:
+            if not self.order:
+                return other*float(self)
+            if not other.order or other.order==self.order and self.order:
+                return self.__new__(self.__class__,super(Unit,self).__mul__(other.convert(self.units)),self.units)
+            elif other.order:
                 newValue=float(self)*float(other)
-                return self.__new__(newValue,self.units.split('/')[0]+'*'+other.units.split('/')[0]+'/'+self.units.split('/')[1]+'*'+other.units.split('/')[1])
+                units=self.units.split('/')[0]+'*'+other.units.split('/')[0]
+                if len(self.units.split('/'))>1 and len(other.units.split('/'))>1:
+                    units+='/'+self.units.split('/')[1]+'*'+other.units.split('/')[1]
+                elif len(self.units.split('/'))>1:
+                    units+='/'+self.units.split('/')[1]
+                elif len(other.units.split('/'))>1:
+                    units+='/'+other.units.split('/')[1]
+                return self.__new__(self.__class__,newValue,units)
             raise UnitError('Dimensionality of units does not match')
         else:
-            return super(Unit,self).__mul__(other)
+            return Unit(super(Unit,self).__mul__(other),self.units)
     def __div__(self,other):
         if type(other)==type(self):
             #check order and then convert to unit
+            if not self.order:
+                return self.__new__(self.__class__,self*other.invert())
             if not other.order or other.order==self.order:
-                return super(Unit,self).__div__(other.convert(self.units))
-            elif not other.order:
+                return self.__new__(self.__class__,super(Unit,self).__div__(other.convert(self.units)),self.units)
+            elif other.order:
                 newValue=float(self)*float(other)
-                return self.__new__(newValue,self.units.split('/')[0]+'*'+other.units.split('/')[1]+'/'+self.units.split('/')[1]+'*'+other.units.split('/')[0])
+                units=self.units.split('/')[0]
+                if len(other.units.split('/'))>1:
+                    units+='*'+other.units.split('/')[1]
+                units+='/'+other.units.split('/')[0]
+                if len(self.units.split('/'))>1:
+                    units+='*'+self.units.split('/')[1]
+                return self.__new__(self.__class__,newValue,units)
             raise UnitError('Dimensionality of units does not match')
         else:
-            return super(Unit,self).__div__(other)
+            return Unit(super(Unit,self).__div__(other),self.units)
     def __truediv__(self,other):
         if type(other)==type(self):
             #check order and then convert to unit
+            if not self.order:
+                return self.__new__(self.__class__,super(Unit,self).__truediv__(other),other.invert().units)
             if not other.order or other.order==self.order:
-                return super(Unit,self).__truediv__(other.convert(self.units))
-            elif not other.order:
+                return self.__new__(self.__class__,super(Unit,self).__truediv__(other.convert(self.units)),self.units)
+            elif other.order:
                 newValue=float(self)*float(other)
-                return self.__new__(newValue,self.units.split('/')[0]+'*'+other.units.split('/')[1]+'/'+self.units.split('/')[1]+'*'+other.units.split('/')[0])
+                units=self.units.split('/')[0]
+                if len(other.units.split('/'))>1:
+                    units+='*'+other.units.split('/')[1]
+                units+='/'+other.units.split('/')[0]
+                if len(self.units.split('/'))>1:
+                    units+='*'+self.units.split('/')[1]
+                return self.__new__(self.__class__,newValue,units)
             raise UnitError('Dimensionality of units does not match')
         else:
-            return super(Unit,self).__truediv__(other)
+            return self.__new__(self.__class__,super(Unit,self).__truediv__(other),self.units)
     def __mod__(self,other):
         if type(other)==type(self):
             #check order and then convert to unit
@@ -97,7 +145,7 @@ class Unit(float):
                 return super(Unit,self).__pow__(other.convert(self.units))
             raise UnitError('Cannot raise to the power of a value with units')
         else:
-            return super(Unit,self).__pow__(other)
+            return self.__new__(self.__class__,super(Unit,self).__pow__(other),self.units)
     def __divmod__(self,other):
         if type(other)==type(self):
             #check order and then convert to unit
@@ -105,7 +153,30 @@ class Unit(float):
                 return super(Unit,self).__divmod__(other.convert(self.units))
             raise UnitError('Dimensionality of units does not match')
         else:
-            return super(Unit,self).__divmod__(other)
+            return super(Unit,self).__divmod__(other)   
+    def __radd__(self,other):
+        return self.__new__(self.__class__,super(Unit,self).__radd__(other),self.units)
+    def __rsub__(self,other):
+        return self.__new__(self.__class__,super(Unit,self).__rsub__(other),self.units)
+    def __rmul__(self,other):
+       return self.__new__(self.__class__,super(Unit,self).__rmul__(other),self.units)
+    def __rdiv__(self,other):
+        return self.__new__(self.__class__,super(Unit,self).__rdiv__(other),self.invert().units)
+    def __rtruediv__(self,other):
+        return self.__new__(self.__class__,super(Unit,self).__rtruediv__(other),self.invert().units)
+    def __rmod__(self,other):
+        if not self.order:
+            return super(Unit,self).__rmod__(other)
+        else:
+            raise UnitError('Dimensionality of units does not match')
+    def __rpow__(self,other):
+        if not self.order:
+            return super(Unit,self).__rpow__(other)
+        raise UnitError('Cannot raise to the power of a value with units')
+    def __rdivmod__(self,other):
+        if not self.order:
+            return super(Unit,self).__rdivmod__(other)
+        raise UnitError('Dimensionality of units does not match')    
     def __ge__(self,other):
         if type(other)==type(self):
             #check order and then convert to unit
@@ -200,11 +271,18 @@ class Unit(float):
             unit=list[i]
             if unit=='':
                 continue
-            if unit.isdigit():
+            try:
+                unit=float(unit)
                 if i==0:
                     raise UnitError('Cannot Parse unit incorrect format, number found before unit')
                 else:
-                    unit=list[i-1]
+                    o,s=self.unitParse([list[i-1]])
+                    for key in o.keys():
+                        order[key]*=unit
+                        scaling*=s**(unit-1)
+                continue
+            except:
+                pass
             if self.isCompound(unit):
                 order,scaling=self.getCompoundUnit(order,scaling,unit)
                 continue
@@ -286,7 +364,9 @@ class Unit(float):
         else:
             raise UnitError('Order of units: '+self.units+'  and  '+desiredUnit+' does not match')
     def convert(self,unit):
-        return self*self.unitCompare(unit)
+        if unit and self.units:
+            return self.__new__(self.__class__,float(self*self.unitCompare(unit)),unit)
+        return self
 class __UnitTestCase(unittest.TestCase):
     def setUp(self):
         self.__setattr__('unit',Unit(1))
@@ -355,6 +435,245 @@ class __UnitTestCase(unittest.TestCase):
         self.unit=Unit(123)
         self.unit.setUnits('miles')
         self.assertEqual(self.unit.convert('m'),1609.344*123,'unitCompare error: '+str(self.unit.convert('m')))
+    def test___repr__(self):
+        self.assertEqual(repr(self.unit),'1.0','repr test error')
+        self.unit.setUnits('m')
+        self.assertEqual(repr(self.unit),'1.0 m','repr test error '+repr(self.unit))
+    def test___eq__(self):
+        self.assertTrue(self.unit==1,'Equality test error')
+        self.assertFalse(self.unit==2,'Equality test error')
+        self.unit.setUnits('m')
+        self.assertTrue(self.unit==Unit(1,'m'),'Equality test error')
+        self.assertFalse(self.unit==Unit(1,'km'),'Equality test error')
+        self.assertFalse(self.unit==Unit(1,'s'),'Equality test error')
+        self.assertTrue(self.unit==Unit(0.001,'km'),'Equality test error')
+    def test___ne_(self):
+        self.assertFalse(self.unit!=1,'Equality test error')
+        self.assertTrue(self.unit!=2,'Equality test error')
+        self.unit.setUnits('m')
+        self.assertFalse(self.unit!=Unit(1,'m'),'Equality test error')
+        self.assertTrue(self.unit!=Unit(1,'km'),'Equality test error')
+        self.assertTrue(self.unit!=Unit(1,'s'),'Equality test error')
+        self.assertFalse(self.unit!=Unit(0.001,'km'),'Equality test error')
+    def test___add__(self):
+        self.assertEqual(self.unit+1,2,'Add test error')
+        self.assertEqual(self.unit+Unit(2,'m'),Unit(3,'m'),'Add test error')
+        self.unit.setUnits('m')
+        try:
+            self.unit+Unit(1,'s')
+            self.assertTrue(False,'Add test error')
+        except Exception,e:
+            self.assertEqual(type(e),UnitError,'Add test error')
+        self.assertAlmostEqual(self.unit+Unit(1,'km'),1001,12,'Add test error '+str(self.unit+Unit(1,'km')))
+        self.assertAlmostEqual(self.unit+Unit(1,'km'),Unit(1.001,'km'),12,'Add test error'+ str(self.unit+Unit(1,'km')))
+    def test___sub__(self):
+        self.assertEqual(self.unit-2,-1,'Sub test error')
+        self.assertEqual(self.unit-Unit(2,'m'),Unit(-1,'m'),'Sub test error')
+        self.unit.setUnits('m')
+        try:
+            self.unit-Unit(1,'s')
+            self.assertTrue(False,'Sub test error')
+        except Exception,e:
+            self.assertEqual(type(e),UnitError,'Sub test error')
+        self.assertAlmostEqual(self.unit-Unit(+1,'km'),-999,12,'Sub test error '+str(self.unit-Unit(1,'km')))
+        self.assertAlmostEqual(self.unit-Unit(1,'km'),Unit(-0.999,'km'),12,'Sub test error'+ str(self.unit-Unit(1,'km')))
+    def test___mul__(self):
+        self.assertEqual(self.unit*2,2,'Mul test error')
+        self.assertEqual(self.unit*Unit(2,'m'),Unit(2,'m'),'Mul test error')
+        self.unit.setUnits('m')
+        self.assertEqual(self.unit*Unit(1,'s'),1,'Mul test error')
+        self.assertEqual(self.unit*Unit(1,'s'),Unit(1,'m*s'),'Mul test error')
+        self.assertAlmostEqual(self.unit*Unit(+1,'km'),1000,12,'Mul test error')
+        self.assertAlmostEqual(self.unit*Unit(1,'km'),Unit(1,'km'),12,'Mul test error')
+    def test___div__(self):
+        self.unit+=3
+        self.assertEqual(self.unit/2,2,'Div test error'+str(self.unit/2))
+        self.assertEqual(self.unit/Unit(2,'m'),Unit(2),'Div test error')
+        self.unit.setUnits('m')
+        self.assertEqual(self.unit/Unit(1,'s'),4,'Div test error')
+        self.assertEqual(self.unit/Unit(1,'s'),Unit(4,'m/s'),'Div test error')
+        self.assertAlmostEqual(self.unit/Unit(+4,'km'),0.001,12,'Div test error')
+        self.assertAlmostEqual(self.unit/Unit(4,'km'),Unit(0.000001,'km'),12,'Div test error')
+    def test___truediv__(self):
+        self.unit+=3
+        self.assertEqual(self.unit.__truediv__(2),2,'truediv test error'+str(self.unit.__truediv__(2)))
+        self.assertEqual(self.unit.__truediv__(Unit(2,'m')),Unit(2),'truediv test error')
+        self.unit.setUnits('m')
+        self.assertEqual(self.unit.__truediv__(Unit(1,'s')),4,'truediv test error')
+    def test___mod__(self):
+        self.unit+=4
+        self.assertEqual(self.unit%2,1,'Mod test error')
+        try:
+            self.unit%Unit(2,'m')
+            self.assertTrue(False)
+        except Exception,e:
+            self.assertEqual(type(e),UnitError,'Mod test error')
+        self.unit.setUnits('m')
+        self.assertEqual(self.unit%(Unit(2,'m')),1,'Mod test error')
+        try:
+            self.unit%Unit(2,'s')
+            self.assertTrue(False)
+        except Exception,e:
+            self.assertEqual(type(e),UnitError,'Mod test error')
+    def test___pow__(self):
+        self.unit+=3
+        self.assertEqual(self.unit**2,16,'Pow test error')
+        try:
+            self.unit**Unit(2,'m')
+            self.assertTrue(False)
+        except Exception,e:
+            self.assertEqual(type(e),UnitError,'Pow test error')
+        self.unit.setUnits('m')
+        self.assertEqual(self.unit**(Unit(2)),16,'Pow test error')
+        try:
+            self.unit%Unit(2,'s')
+            self.assertTrue(False)
+        except Exception,e:
+            self.assertEqual(type(e),UnitError,'Pow test error')
+    def test___divmod__(self):
+        self.unit+=4
+        self.assertEqual(divmod(self.unit,2),(2,1),'divmod test error')
+        try:
+            divmod(self.unit,Unit(2,'m'))
+            self.assertTrue(False)
+        except Exception,e:
+            self.assertEqual(type(e),UnitError,'divmod test error')
+        self.unit.setUnits('m')
+        self.assertEqual(divmod(self.unit,Unit(2,'m')),(2,1),'divmod test error')
+        try:
+            divmod(self.unit,Unit(2,'s'))
+            self.assertTrue(False)
+        except Exception,e:
+            self.assertEqual(type(e),UnitError,'divmod test error')
+    def test___radd__(self):
+        self.assertEqual(1+self.unit,2,'radd test error')
+        self.assertEqual(2+self.unit,Unit(3),'radd test error')
+        self.unit.setUnits('m')
+        self.assertEqual(2+self.unit,Unit(3,'m'),'radd test error')
+    def test___rsub__(self):
+        self.assertEqual(3-self.unit,2,'rsub test error')
+        self.assertEqual(4-self.unit,Unit(3),'rsub test error')
+        self.unit.setUnits('m')
+        self.assertEqual(4-self.unit,Unit(3,'m'),'rsub test error')
+    def test___rmul__(self):
+        self.assertEqual(3*self.unit,3,'rmul test error')
+        self.assertEqual(4*self.unit,Unit(4),'rmul test error')
+        self.unit.setUnits('m')
+        self.assertEqual(4*self.unit,Unit(4,'m'),'rmul test error')
+    def test___rdiv__(self):
+        self.assertEqual(3/self.unit,3,'rdiv test error')
+        self.assertEqual(4/self.unit,Unit(4),'rdiv test error')
+        self.unit.setUnits('m')
+        self.assertEqual(4/self.unit,Unit(4,'m**-1'),'rdiv test error')
+        self.unit+=3
+        self.assertEqual(4/self.unit,Unit(1,'m**-1'),'rdiv test error')
+    def test___rtruediv__(self):
+        self.assertEqual(self.unit.__rtruediv__(3),3,'rtruediv test error')
+        self.assertEqual(self.unit.__rtruediv__(4),Unit(4),'rtruediv test error')
+        self.unit.setUnits('m')
+        self.assertEqual(self.unit.__rtruediv__(4),Unit(4,'m**-1'),'rtruediv test error')
+        self.unit+=3
+        self.assertEqual(self.unit.__rtruediv__(4),Unit(1,'m**-1'),'rtruediv test error')
+    def test___rmod__(self):
+        self.unit+=4
+        self.assertEqual(9%self.unit,4,'rmod test error')
+        self.unit.setUnits('m')
+        try:
+            9%self.unit
+            self.assertTrue(False)
+        except Exception,e:
+            self.assertEqual(type(e),UnitError,'rmod test error')
+    def test___rpow__(self):
+        self.unit+=1
+        self.assertEqual(4**self.unit,16,'rpow test error')
+        self.unit.setUnits('m')
+        try:
+            4**self.unit
+            self.assertTrue(False)
+        except Exception,e:
+            self.assertEqual(type(e),UnitError,'rpow test error')
+    def test___rdivmod__(self):
+        self.unit+=4
+        self.assertEqual(divmod(9,self.unit),(1,4),'rdivmod test error')
+        self.unit.setUnits('m')
+        try:
+            divmod(9,self.unit)
+            self.assertTrue(False)
+        except Exception,e:
+            self.assertEqual(type(e),UnitError,'rdivmod test error')
+    def test___ge__(self):
+        self.assertTrue(4>=self.unit,'ge error')
+        self.assertFalse(self.unit>=2,'ge error')
+        self.unit+=2
+        self.assertTrue(self.unit>=3,'ge error')
+        self.assertTrue(3>=self.unit,'ge error')
+        self.unit.setUnits('m')
+        self.assertTrue(self.unit>=3,'ge error')
+        self.assertTrue(3>=self.unit,'ge error')
+        self.assertTrue(self.unit>=Unit(3,'m'),'ge error')
+        try:
+            self.assertTrue(self.unit>=Unit(3,'s'),'ge error')
+            self.assertTrue(False)
+        except Exception,e:
+            self.assertEqual(type(e),UnitError,'ge test error')
+    def test___gt__(self):
+        self.assertTrue(4>self.unit,'gt error')
+        self.assertFalse(self.unit>1,'gt error')
+        self.unit+=2
+        self.assertTrue(self.unit>2,'gt error')
+        self.assertTrue(4>self.unit,'gt error')
+        self.unit.setUnits('m')
+        self.assertTrue(self.unit>2,'gt error')
+        self.assertTrue(4>self.unit,'gt error')
+        self.assertTrue(self.unit>Unit(2,'m'),'gt error')
+        try:
+            self.assertTrue(self.unit>Unit(2,'s'),'gt error')
+            self.assertTrue(False)
+        except Exception,e:
+            self.assertEqual(type(e),UnitError,'gt test error')
+    def test___le__(self):
+        self.assertTrue(1<=self.unit,'le error')
+        self.assertFalse(self.unit<=0,'le error')
+        self.unit+=2
+        self.assertTrue(self.unit<=3,'le error')
+        self.assertTrue(3<=self.unit,'le error')
+        self.unit.setUnits('m')
+        self.assertTrue(self.unit<=3,'le error')
+        self.assertTrue(2<self.unit,'le error')
+        self.assertTrue(self.unit<=Unit(4,'m'),'le error')
+        try:
+            self.assertTrue(self.unit<=Unit(4,'s'),'le error')
+            self.assertTrue(False)
+        except Exception,e:
+            self.assertEqual(type(e),UnitError,'le test error')
+    def test___lt__(self):
+        self.assertTrue(0<self.unit,'lt error')
+        self.assertFalse(self.unit<0,'lt error')
+        self.unit+=2
+        self.assertTrue(self.unit<4,'lt error')
+        self.assertTrue(2<self.unit,'lt error')
+        self.unit.setUnits('m')
+        self.assertTrue(self.unit<4,'lt error')
+        self.assertTrue(2<self.unit,'lt error')
+        self.assertTrue(self.unit<Unit(4,'m'),'lt error')
+        try:
+            self.assertTrue(self.unit<Unit(4,'s'),'lt error')
+            self.assertTrue(False)
+        except Exception,e:
+            self.assertEqual(type(e),UnitError,'lt test error')
+    def test___float__(self):
+        self.assertEqual(float(self.unit),1.0,'float error')
+        self.assertNotEqual(float(self.unit),2.0,'float error')
+    def test_invert(self):
+        self.assertEqual(self.unit.invert(),Unit(1),'invert error')
+        self.unit+=1
+        self.assertEqual(self.unit.invert(),Unit(0.5),'invert error')
+        self.unit.setUnits('m')
+        self.assertEqual(self.unit.invert(),Unit(0.5,'m**-1'),'invert error')
+        self.unit.setUnits('m/s')
+        self.assertEqual(self.unit.invert(),Unit(0.5,'s/m'),'invert error')
+
+
 def __debugTestSuite():
     suite=unittest.TestSuite()
     unitSuite = unittest.TestLoader().loadTestsFromTestCase(__UnitTestCase)
