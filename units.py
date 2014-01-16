@@ -18,6 +18,10 @@ class Unit(float):
         return self
     def __float__(self):
         return super(Unit,self).__float__()
+    def __format__(self,formatSpec):
+        if self.units:
+            return super(Unit,self).__format__(formatSpec)+' '+self.units
+        return super(Unit,self).__format__(formatSpec)
     def setUnits(self,units):
         multiply=compile(self._separators['MULTIPLY'])
         divide=compile(self._separators['DIVIDE'])
@@ -672,7 +676,12 @@ class __UnitTestCase(unittest.TestCase):
         self.assertEqual(self.unit.invert(),Unit(0.5,'m**-1'),'invert error')
         self.unit.setUnits('m/s')
         self.assertEqual(self.unit.invert(),Unit(0.5,'s/m'),'invert error')
-
+    def test___format__(self):
+        self.assertEqual('{:>4.2f}'.format(self.unit),'1.00','format error')
+        self.unit.setUnits('m')
+        self.assertEqual('{:>4.2f}'.format(self.unit),'1.00 m','format error')
+        self.unit.setUnits('m/s')
+        self.assertEqual('{:>4.2f}'.format(self.unit),'1.00 m/s','format error')
 
 def __debugTestSuite():
     suite=unittest.TestSuite()
