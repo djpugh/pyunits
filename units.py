@@ -19,6 +19,13 @@ class Unit(float):
     def __float__(self):
         return super(Unit,self).__float__()
     def __format__(self,formatSpec):
+        import re
+        r=re.compile("(.+)([eEfFgGn])( *)(.*)")
+        m=r.match(formatSpec)
+        formatSpec=m.group(1)+m.group(2)
+        newUnits=m.group(4).rstrip('a')
+        if newUnits!='':
+            return self.convert(newUnits).__format__(formatSpec)
         if self.units:
             return super(Unit,self).__format__(formatSpec)+' '+self.units
         return super(Unit,self).__format__(formatSpec)
@@ -682,6 +689,7 @@ class __UnitTestCase(unittest.TestCase):
         self.assertEqual('{:>4.2f}'.format(self.unit),'1.00 m','format error')
         self.unit.setUnits('m/s')
         self.assertEqual('{:>4.2f}'.format(self.unit),'1.00 m/s','format error')
+        self.assertEqual('{:>5.3fkm/sa}'.format(self.unit),'0.001 km/s','format error')
 
 def __debugTestSuite():
     suite=unittest.TestSuite()
