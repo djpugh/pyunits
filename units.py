@@ -20,13 +20,21 @@ class Unit(float):
         return super(Unit,self).__float__()
     def __format__(self,formatSpec):
         import re
-        r=re.compile("(.+)([eEfFgGn])( *)(.*)")
+        r=re.compile("(.+)([eEfFgGn]?)( *)(.*)")
         m=r.match(formatSpec)
         formatSpec=m.group(1)+m.group(2)
+        showUnits=True
+        if len(m.group(4)):
+            showUnits=m.group(4)[-1]!='A'
+
+        if m.group(1).isalpha():
+            newUnits=m.group(1).rstrip('a')
+            formatSpec=''
+            showUnits=m.group(1)[-1]!='A'
         newUnits=m.group(4).rstrip('a')
         if newUnits!='':
             return self.convert(newUnits).__format__(formatSpec)
-        if self.units:
+        if self.units and showUnits:
             return super(Unit,self).__format__(formatSpec)+' '+self.units
         return super(Unit,self).__format__(formatSpec)
     def setUnits(self,units):
