@@ -20,17 +20,12 @@ class Unit(float):
         return super(Unit,self).__float__()
     def __format__(self,formatSpec):
         import re
-        r=re.compile("(.+)([eEfFgGn]?)( *)(.*)")
+        r=re.compile("([<>=\^]?)([\d.]*)([FfgGeEn]?)(.*)")
         m=r.match(formatSpec)
-        formatSpec=m.group(1)+m.group(2)
+        formatSpec=m.group(1)+m.group(2)+m.group(3)
         showUnits=True
         if len(m.group(4)):
             showUnits=m.group(4)[-1]!='A'
-
-        if m.group(1).isalpha():
-            newUnits=m.group(1).rstrip('a')
-            formatSpec=''
-            showUnits=m.group(1)[-1]!='A'
         newUnits=m.group(4).rstrip('a')
         if newUnits!='':
             return self.convert(newUnits).__format__(formatSpec)
@@ -228,6 +223,8 @@ class Unit(float):
             raise UnitError('Dimensionality of units does not match')
         else:
             return super(Unit,self).__lt__(other)
+    def __abs__(self):
+        return Unit(super(Unit,self).__abs__(),self.units)
     def getUnit(self,unit):
         """getUnit(unit)
         Sub routine to extract unit parameters from UNITS dictionary and return the appropriate values.
@@ -683,6 +680,9 @@ class __UnitTestCase(unittest.TestCase):
     def test___float__(self):
         self.assertEqual(float(self.unit),1.0,'float error')
         self.assertNotEqual(float(self.unit),2.0,'float error')
+    def test___abs__(self):
+        self.assertEqual(abs(self.unit),1.0,'abs error')
+        self.assertEqual(abs(-self.unit),1.0,'abs error')
     def test_invert(self):
         self.assertEqual(self.unit.invert(),Unit(1),'invert error')
         self.unit+=1
