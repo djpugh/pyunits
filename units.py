@@ -55,7 +55,7 @@ class Unit(float):
     def __eq__(self,other):
         if type(other)==type(self):
             #check order and then convert to unit
-            if not other.order or other.order==self.order:
+            if not other.order or self.compare(other.order,self.order):
                 return super(Unit,self).__eq__(other.convert(self.units))
             return False
         else:
@@ -67,7 +67,7 @@ class Unit(float):
             #check order and then convert to unit
             if not self.order:
                 return self.__new__(self.__class__,float(self)+float(other),other.units)
-            if not other.order  or other.order==self.order:
+            if not other.order  or self.compare(other.order,self.order):
                 return self.__new__(self.__class__,super(Unit,self).__add__(other.convert(self.units)),self.units)
             raise UnitError('Dimensionality of units does not match')
         else:
@@ -81,7 +81,7 @@ class Unit(float):
             #check order and then convert to unit
             if not self.order:
                 return self.__new__(self.__class__,float(self)-float(other),other.units)
-            if not other.order or other.order==self.order:
+            if not other.order or self.compare(other.order,self.order):
                 return self.__new__(self.__class__,super(Unit,self).__sub__(other.convert(self.units)),self.units)
             raise UnitError('Dimensionality of units does not match')
         else:
@@ -91,7 +91,7 @@ class Unit(float):
             #check order and then convert to unit
             if not self.order:
                 return other*float(self)
-            if not other.order or other.order==self.order and self.order:
+            if not other.order or self.compare(other.order,self.order) and self.order:
                 return self.__new__(self.__class__,super(Unit,self).__mul__(other.convert(self.units)),self.units)
             elif other.order:
                 newValue=float(self)*float(other)
@@ -111,7 +111,7 @@ class Unit(float):
             #check order and then convert to unit
             if not self.order:
                 return self.__new__(self.__class__,self*other.invert())
-            if not other.order or other.order==self.order:
+            if not other.order or self.compare(other.order,self.order):
                 return self.__new__(self.__class__,super(Unit,self).__div__(other.convert(self.units)),self.units)
             elif other.order:
                 newValue=float(self)*float(other)
@@ -130,7 +130,7 @@ class Unit(float):
             #check order and then convert to unit
             if not self.order:
                 return self.__new__(self.__class__,super(Unit,self).__truediv__(other),other.invert().units)
-            if not other.order or other.order==self.order:
+            if not other.order or self.compare(other.order,self.order):
                 return self.__new__(self.__class__,super(Unit,self).__truediv__(other.convert(self.units)),self.units)
             elif other.order:
                 newValue=float(self)*float(other)
@@ -147,7 +147,7 @@ class Unit(float):
     def __mod__(self,other):
         if type(other)==type(self):
             #check order and then convert to unit
-            if not other.order or other.order==self.order:
+            if not other.order or self.compare(other.order,self.order):
                 return super(Unit,self).__mod__(other.convert(self.units))
             raise UnitError('Dimensionality of units does not match')
         else:
@@ -163,7 +163,7 @@ class Unit(float):
     def __divmod__(self,other):
         if type(other)==type(self):
             #check order and then convert to unit
-            if not other.order or other.order==self.order:
+            if not other.order or self.compare(other.order,self.order):
                 return super(Unit,self).__divmod__(other.convert(self.units))
             raise UnitError('Dimensionality of units does not match')
         else:
@@ -194,7 +194,7 @@ class Unit(float):
     def __ge__(self,other):
         if type(other)==type(self):
             #check order and then convert to unit
-            if not other.order or other.order==self.order:
+            if not other.order or self.compare(other.order,self.order):
                 return super(Unit,self).__ge__(other.convert(self.units))
             raise UnitError('Dimensionality of units does not match')
         else:
@@ -202,7 +202,7 @@ class Unit(float):
     def __gt__(self,other):
         if type(other)==type(self):
             #check order and then convert to unit
-            if not other.order or other.order==self.order:
+            if not other.order or self.compare(other.order,self.order):
                 return super(Unit,self).__gt__(other.convert(self.units))
             raise UnitError('Dimensionality of units does not match')
         else:
@@ -210,7 +210,7 @@ class Unit(float):
     def __le__(self,other):
         if type(other)==type(self):
             #check order and then convert to unit
-            if not other.order or other.order==self.order:
+            if not other.order or self.compare(other.order,self.order):
                 return super(Unit,self).__le__(other.convert(self.units))
             raise UnitError('Dimensionality of units does not match')
         else:
@@ -218,7 +218,7 @@ class Unit(float):
     def __lt__(self,other):
         if type(other)==type(self):
             #check order and then convert to unit
-            if not other.order or other.order==self.order:
+            if not other.order or self.compare(other.order,self.order):
                 return super(Unit,self).__lt__(other.convert(self.units))
             raise UnitError('Dimensionality of units does not match')
         else:
