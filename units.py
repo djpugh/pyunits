@@ -35,7 +35,7 @@ class Unit(float):
                 formatSpec+='A'
             return self.convert(newUnits).__format__(formatSpec)
         if self.units and showUnits:
-            return super(Unit,self).__format__(formatSpec)+' '+self.units
+            return super(Unit,self).__format__(formatSpec)+self.units
         return super(Unit,self).__format__(formatSpec)
     def setUnits(self,units):
         multiply=compile(self._separators['MULTIPLY'])
