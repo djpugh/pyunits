@@ -23,11 +23,16 @@ class Unit(float):
         r=re.compile("([<>=\^]?)([\d.]*)([FfgGeEn]?)(.*)")
         m=r.match(formatSpec)
         formatSpec=m.group(1)+m.group(2)+m.group(3)
+        if formatSpec=='.':
+            formatSpec=''
         showUnits=True
         if len(m.group(4)):
             showUnits=m.group(4)[-1]!='A'
         newUnits=m.group(4).rstrip('a')
+        newUnits=newUnits.rstrip('A')
         if newUnits!='':
+            if not showUnits:
+                formatSpec+='A'
             return self.convert(newUnits).__format__(formatSpec)
         if self.units and showUnits:
             return super(Unit,self).__format__(formatSpec)+' '+self.units
