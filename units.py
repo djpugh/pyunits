@@ -235,6 +235,7 @@ class Unit(float):
         Sub routine to extract unit parameters from UNITS dictionary and return the appropriate values.
         Also determines prefixes.
         """
+        unit=unit.strip()
         if unit in self._units.keys():
             return self._units[unit],1
         elif unit[1:] in self._units.keys() and unit[0] in self._prefixes.keys():
