@@ -341,19 +341,23 @@ class Unit(float):
         """compare(order1,order2)
         compare the dimensions of 2 sets of units and check that the result of dividing one by the other is dimensionless
         """
-        for type in list(set(order1.keys()+order2.keys())):
-            order=0
-            try:
-                order+=order1[type]
-            except KeyError:
-                pass
-            try:
-                order-=order2[type]
-            except KeyError:
-                pass
-            if order!=0:
-                return False
-        return True
+        if order1 and order2:
+            for type in list(set(order1.keys()+order2.keys())):
+                order=0
+                try:
+                    order+=order1[type]
+                except KeyError:
+                    pass
+                try:
+                    order-=order2[type]
+                except KeyError:
+                    pass
+                if order!=0:
+                    return False
+            return True
+        elif not order1 and not order2:
+            return True
+        return False
     def unitCompare(self,desiredUnit):
         """unitCompare(self,desiredUnit)
         Function to compare two units and return the scale factor between them.
