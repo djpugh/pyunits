@@ -20,22 +20,28 @@ class Unit(float):
         return super(Unit,self).__float__()
     def __format__(self,formatSpec):
         import re
-        r=re.compile("([<>=\^]?)([\d.]*)([FfgGeEn]?)(.*)")
+        r=re.compile("\.?([<>=\^]?)([\d\.]*)([FfgGeEn]?)([ _]?)(.*)")
         m=r.match(formatSpec)
         formatSpec=m.group(1)+m.group(2)+m.group(3)
         if formatSpec=='.':
             formatSpec=''
         showUnits=True
-        if len(m.group(4)):
-            showUnits=m.group(4)[-1]!='A'
-        newUnits=m.group(4).rstrip('a')
+        if len(m.group(5)):
+            showUnits=m.group(5)[-1]!='A'
+        newUnits=m.group(5).rstrip('a')
         newUnits=newUnits.rstrip('A')
+        space=''
+        if len(m.group(4)):
+            space=' '
+        newUnits=newUnits.strip()
         if newUnits!='':
             if not showUnits:
                 formatSpec+='A'
+            else:
+                formatSpec+=space+'a'
             return self.convert(newUnits).__format__(formatSpec)
         if self.units and showUnits:
-            return super(Unit,self).__format__(formatSpec)+self.units
+            return super(Unit,self).__format__(formatSpec)+space+self.units
         return super(Unit,self).__format__(formatSpec)
     def setUnits(self,units):
         multiply=compile(self._separators['MULTIPLY'])
@@ -704,10 +710,11 @@ class __UnitTestCase(unittest.TestCase):
     def test___format__(self):
         self.assertEqual('{:>4.2f}'.format(self.unit),'1.00','format error')
         self.unit.setUnits('m')
-        self.assertEqual('{:>4.2f}'.format(self.unit),'1.00 m','format error')
+        self.assertEqual('{:>4.2f}'.format(self.unit),'1.00m','format error')
         self.unit.setUnits('m/s')
-        self.assertEqual('{:>4.2f}'.format(self.unit),'1.00 m/s','format error')
-        self.assertEqual('{:>5.3fkm/sa}'.format(self.unit),'0.001 km/s','format error')
+        self.assertEqual('{:>4.2f}'.format(self.unit),'1.00m/s','format error')
+        self.assertEqual('{:>5.3f km/sa}'.format(self.unit),'0.001 km/s','format error')
+        self.assertEqual('{:>5.3f km/sA}'.format(self.unit),'0.001','format error')
 
 def __debugTestSuite():
     suite=unittest.TestSuite()
