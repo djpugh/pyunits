@@ -287,16 +287,16 @@ class Unit(float):
             return True
         else:
             return False
-    def unitParse(self,list):
-        """unitParse(list)
+    def unitParse(self,unitList):
+        """unitParse(unitList)
         Parse a list of units and powers into a dimensional order and scaling factor to the SI UNIT combination.
         Expects list of the form [unit,(power),unit,..] where power doesn't have to be specified but if it does it refers to the previous unit.
         """
         #Give order of types and scaling to SI units
         scaling=1
         order={}
-        for i in range(len(list)):
-            unit=list[i]
+        for i in range(len(unitList)):
+            unit=unitList[i]
             if unit=='':
                 continue
             try:
@@ -304,9 +304,9 @@ class Unit(float):
                 if i==0:
                     raise UnitError('Cannot Parse unit incorrect format, number found before unit')
                 else:
-                    o,s=self.unitParse([list[i-1]])
+                    o,s=self.unitParse([unitList[i-1]])
                     for key in o.keys():
-                        order[key]*=unit
+                        order[key]+=unit*o[key]
                         scaling*=s**(unit-1)
                 continue
             except:
