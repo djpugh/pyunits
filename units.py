@@ -306,7 +306,7 @@ class Unit(float):
                 else:
                     o,s=self.unitParse([unitList[i-1]])
                     for key in o.keys():
-                        order[key]+=unit*o[key]
+                        order[key]+=(unit-1)*o[key]
                         scaling*=s**(unit-1)
                 continue
             except:
